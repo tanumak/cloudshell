@@ -226,6 +226,12 @@ hosts_update() {
 }
 
 #--------------------------------------
+# misc
+google_cloudshell() {
+  test -d /google || return $?
+}
+
+#--------------------------------------
 # command
 exec_command() {
   status=0

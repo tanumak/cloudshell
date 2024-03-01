@@ -23,6 +23,18 @@ harbor_nodeport=30021
 
 act_runner_dir=act_runner
 
+# docker
+echo -n "google cloudshell check ... "
+if google_cloudshell; then
+  if ! exec_command "grep insecure-registry /etc/default/docker >/dev/null"; then
+    exec_command "echo 'DOCKER_OPTS=\"$DOCKER_OPTS --insecure-registry 192.168.0.0/16\"' | sudo tee -a /etc/default/docker"
+  fi
+  if ! exec_command "ps -ef | grep -E docker.pid.*insecure-registry | grep -v grep >/dev/null"; then
+    exec_command "sudo /etc/init.d/docker restart" || fail
+  fi
+fi
+ok
+
 # minikube
 echo -n "minikube check ... "
 if ! minikube_status; then
