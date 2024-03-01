@@ -96,8 +96,8 @@ if ! kubectl_check_portforward "svc/argocd-server" "$portforward_argocd:80" "arg
 else ok
 fi
 echo -n "login argocd ... "
-argocd_password=$(exec_command_out "kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{$.data.password}' | base64 -d")
-argocd_login $portforward_argocd $argocd_password || fail
+argocd_pass=$(exec_command_out "kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{$.data.password}' | base64 -d")
+argocd_login $portforward_argocd $argocd_pass || fail
 ok
 
 # gitea
@@ -243,3 +243,31 @@ fi
 ok
 exec_command "popd"
 
+
+### URL
+if google_cloudshell; then
+  eval " $(grep WEB_HOST /etc/environment)"
+  echo
+  echo "--------------------------------------------------------------------------------"
+  echo "Argo CD WEB UI (browser)"
+  echo "  https://8080-$WEB_HOST/"
+  echo "  Username: admin, Password: $argocd_pass"
+  echo "--------------------------------------------------------------------------------"
+  echo "Gitea WEB UI (browser)"
+  echo "  https://8081-$WEB_HOST/"
+  echo "  Username: $gitea_user, Password: $gitea_pass"
+  echo
+  echo "Gitea CLI (git command)"
+  echo "  http://$gitea_host:$gitea_nodeport_http"
+  echo "  ssh://$gitea_host:$gitea_nodeport_ssh"
+  echo "  Username: $gitea_user, Password: $gitea_pass"
+  echo "--------------------------------------------------------------------------------"
+  echo "Harbor WEB UI"
+  echo "  https://8082-$WEB_HOST/"
+  echo "  Username: $harbor_user, Password: $harbor_pass"
+  echo
+  echo "Harbor CLI (docker command)"
+  echo "  http://$harbor_host:$harbor_nodeport"
+  echo "  Username: $harbor_user, Password: $harbor_pass"
+  echo "--------------------------------------------------------------------------------"
+fi
