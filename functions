@@ -211,6 +211,21 @@ harbor_login() {
 }
 
 #--------------------------------------
+# hosts
+hosts_check() {
+  host=$1
+  ip=$(minikube ip)
+  cmd="grep $host /etc/hosts | grep $ip"
+  exec_command "$cmd" || return $?
+}
+hosts_update() {
+  host=$1
+  ip=$(minikube ip)
+  cmd="echo $ip $host | sudo tee -a /etc/hosts"
+  exec_command "$cmd" || return $?
+}
+
+#--------------------------------------
 # command
 exec_command() {
   status=0

@@ -125,7 +125,7 @@ if ! kubectl_check_portforward "svc/gitea-http" "$portforward_gitea:3000" "gitea
 else ok
 fi
 
-# harbor port-forward, login
+# harbor port-forward
 echo -n "harbor condition check ... "
 kubectl_wait_exists "ns" "harbor" "5" || fail
 kubectl_wait_exists "deploy" "harbor-core" "5" "harbor" || fail
@@ -140,6 +140,14 @@ if ! kubectl_check_portforward "svc/harbor" "$portforward_harbor:80" "harbor"; t
   ok
 else ok
 fi
+
+# hosts
+echo -n "check hosts ... "
+hosts_check "$gitea_host" || hosts_update "$gitea_host" || fail
+hosts_check "$harbor_host" || hosts_update "$harbor_host" || fail
+ok
+
+# harbor login
 echo -n "login harbor ... "
 harbor_login "http://$harbor_host:$harbor_nodeport/" "$harbor_user" "$harbor_pass" || fail
 ok
