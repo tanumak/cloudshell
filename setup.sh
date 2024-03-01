@@ -187,6 +187,12 @@ echo -n "set gitea secret for harbor ... "
 gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "harbor_username" $harbor_user || fail
 gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "harbor_password" $harbor_pass || fail
 ok
+echo -n "set gitea user access token ... "
+if !  gitea_check_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat"; then
+  gitea_token=$(gitea_create_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat" '["write:issue","write:repository","write:user"]')
+  gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat" "$gitea_token" || fail
+fi
+ok
 
 # act_runner
 echo -n "check local act runner ... "
@@ -239,9 +245,25 @@ echo -n "check spring boot app git ... "
 if ! test -d ".git"; then
   exec_command "git init" || fail
   exec_command "git branch -m main" || fail
-  exec_command "git add -A ." || fail
+  exec_command "git add -A" || fail
   exec_command "git -c user.email=gitea@gitea.local -c user.name=gitea commit -m 'initial commit'" || fail
   exec_command "git remote add origin http://$gitea_user:$gitea_pass@$gitea_host:$gitea_nodeport_http/$gitea_user/app.git" || fail
+fi
+ok
+exec_command "popd"
+echo -n "check spring boot app manifest git ... "
+if ! test -d "app-manifest"; then
+  exec_command "mkdir app-manifest" || fail
+  exec_command "cp -p $basedir/misc/java-app/java-app-manifest.yaml app-manifest/java-app-manifest.yaml" || fail
+fi
+exec_command "pushd app-manifest"
+if ! test -d ".git"; then
+  exec_command "git init" || fail
+  exec_command "git branch -m main" || fail
+  exec_command "git add -A" || fail
+  exec_command "git -c user.email=gitea@gitea.local -c user.name=gitea commit -m 'initial commit'" || fail
+  exec_command "git remote add origin http://$gitea_user:$gitea_pass@$gitea_host:$gitea_nodeport_http/$gitea_user/app-manifest.git" || fail
+  exec_command "git push origin main" || fail
 fi
 ok
 exec_command "popd"

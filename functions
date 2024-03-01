@@ -201,6 +201,23 @@ gitea_set_secret() {
   cmd="curl -s -X PUT -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"data\": \"$value\" }' http://$endpoint/api/v1/user/actions/secrets/$key -w '%{http_code}'"
   exec_command "$cmd" || return $?
 }
+gitea_check_access_token() {
+  endpoint=$1
+  user=$2
+  pass=$3
+  name=$4
+  cmd="curl -s -X GET -u \"$user:$pass\" http://$endpoint/api/v1/users/$user/tokens | jq '[ .[] | select (.name == \"$name\")] | length'"
+  exec_command "$cmd" 1 || return $?
+}
+gitea_create_access_token() {
+  endpoint=$1
+  user=$2
+  pass=$3
+  name=$4
+  scope=$5
+  cmd="curl -s -X POST -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"name\": \"$name\", \"scope\": $scope }' http://$endpoint/api/v1/users/$user/tokens | jq -r .sha1"
+  exec_command_out "$cmd"
+}
 
 #--------------------------------------
 # harbor
