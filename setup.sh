@@ -73,11 +73,21 @@ if ! helm_check_install "argocd" "argocd"; then
   ok
 else ok
 fi
+
+# cli
 echo -n "argocd cli check ..."
 if ! argocd_check_cli; then
   ng
   echo -n "argocd cli install ... "
   argocd_install_cli || fail
+  ok
+else ok
+fi
+echo -n "gitea cli check ..."
+if ! gitea_check_cli; then
+  ng
+  echo -n "gitea cli install ... "
+  gitea_install_cli || fail
   ok
 else ok
 fi

@@ -141,7 +141,6 @@ argocd_check_app() {
   exec_command "$cmd" 1 || return $?
 }
 argocd_create_app() {
-#argocd app create gitea --repo https://dl.gitea.com/charts/ --helm-chart gitea --dest-server https://kubernetes.default.svc --dest-namespace gitea --revision 10.1.2 --sync-policy auto --sync-option CreateNamespace=true --values-literal-file gitea/values.yaml
   name=$1
   repo=$2
   chart=$3
@@ -217,6 +216,14 @@ gitea_create_access_token() {
   scope=$5
   cmd="curl -s -X POST -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"name\": \"$name\", \"scope\": $scope }' http://$endpoint/api/v1/users/$user/tokens | jq -r .sha1"
   exec_command_out "$cmd"
+}
+gitea_check_cli() {
+  cmd="which tea"
+  exec_command "$cmd" || return $?
+}
+gitea_install_cli() {
+  cmd="curl -sSL -o /tmp/tea-0.9.2-linux-amd64 https://gitea.com/gitea/tea/releases/download/v0.9.2/tea-0.9.2-linux-amd64; sudo install -m 555 /tmp/tea-0.9.2-linux-amd64 /usr/local/bin/tea; rm /tmp/tea-0.9.2-linux-amd64"
+  exec_command "$cmd" || return $?
 }
 
 #--------------------------------------
