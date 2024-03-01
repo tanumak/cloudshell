@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: java-app
-        image: registry.harbor.local:30021/library/app:e4c9830
+        image: registry.harbor.local:30021/library/java-app:latest
         ports:
           - containerPort: 8080
 ---

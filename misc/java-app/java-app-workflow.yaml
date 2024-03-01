@@ -48,7 +48,7 @@ jobs:
         run: |
           git branch update_image_tag_${{ env.sha }}
           git checkout update_image_tag_${{ env.sha }}
-          sed -i -e '/image: harbor.harbor.svc.cluster.local/ s/app:.*/app:${{ env.sha }}/' java-app-manifest.yaml
+          sed -i -e '/image: registry.harbor.local:30021/ s/app:.*/app:${{ env.sha }}/' java-app-manifest.yaml
           git add java-app-manifest.yaml
           git -c user.email=gitea.actions@gitea.local -c user.name=gitea.actions commit -m "update image tag ${{ env.sha }}"
       - name: Login gitea
