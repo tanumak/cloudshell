@@ -250,6 +250,18 @@ hosts_update() {
   cmd="echo $ip $host | sudo tee -a /etc/hosts"
   exec_command "$cmd" || return $?
 }
+hosts_check_minikube() {
+  host=$1
+  ip=$(minikube ip)
+  cmd="minikube ssh grep $host /etc/hosts | grep $ip"
+  exec_command "$cmd" || return $?
+}
+hosts_update_minikube() {
+  host=$1
+  ip=$(minikube ip)
+  cmd="minikube ssh \"echo $ip $host | sudo tee -a /etc/hosts\""
+  exec_command "$cmd" || return $?
+}
 
 #--------------------------------------
 # misc

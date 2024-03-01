@@ -167,6 +167,7 @@ fi
 echo -n "check hosts ... "
 hosts_check "$gitea_host" || hosts_update "$gitea_host" || fail
 hosts_check "$harbor_host" || hosts_update "$harbor_host" || fail
+hosts_check_minikube "$harbor_host" || hosts_update_minikube "$harbor_host" || fail
 ok
 
 # harbor login
