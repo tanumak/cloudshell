@@ -231,6 +231,9 @@ if ! test -f "app/.gitea/workflows/app.yaml"; then
   exec_command "cp -p $basedir/misc/java-app/java-app-workflow.yaml app/.gitea/workflows/java-app-workflow.yaml" || fail
 fi
 ok
+echo -n "update spring boot app Dockerfile ... "
+exec_command "cp -p $basedir/misc/java-app/Dockerfile app/Dockerfile" || fail
+ok
 exec_command "pushd app"
 echo -n "check spring boot app git ... "
 if ! test -d ".git"; then
@@ -250,11 +253,11 @@ if google_cloudshell; then
   echo
   echo "--------------------------------------------------------------------------------"
   echo "Argo CD WEB UI (browser)"
-  echo "  https://8080-$WEB_HOST/"
+  echo "  https://$portforward_argocd-$WEB_HOST/"
   echo "  Username: admin, Password: $argocd_pass"
   echo "--------------------------------------------------------------------------------"
   echo "Gitea WEB UI (browser)"
-  echo "  https://8081-$WEB_HOST/"
+  echo "  https://$portforward_gitea-$WEB_HOST/"
   echo "  Username: $gitea_user, Password: $gitea_pass"
   echo
   echo "Gitea CLI (git command)"
@@ -263,7 +266,7 @@ if google_cloudshell; then
   echo "  Username: $gitea_user, Password: $gitea_pass"
   echo "--------------------------------------------------------------------------------"
   echo "Harbor WEB UI"
-  echo "  https://8082-$WEB_HOST/"
+  echo "  https://$portforward_harbor-$WEB_HOST/"
   echo "  Username: $harbor_user, Password: $harbor_pass"
   echo
   echo "Harbor CLI (docker command)"
