@@ -5,6 +5,8 @@ set -e
 # vars
 logfile=$basedir/setup.log
 
+TZ=JST-9
+
 #--------------------------------------
 # minikube
 minikube_status() {
@@ -264,7 +266,7 @@ exec_command_out() {
 #--------------------------------------
 # logging
 command_log_start() {
-  echo "- COMMAND" >>$logfile
+  echo "- \`$(now)\` - COMMAND" >>$logfile
   echo '```bash' >>$logfile
   echo "$1" >>$logfile
   echo '```' >>$logfile
@@ -285,4 +287,7 @@ ng() {
 fail() {
   echo "fail"
   exit 1
+}
+now() {
+  date "+%Y-%m-%d %H:%M:%S"
 }
