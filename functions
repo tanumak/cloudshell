@@ -3,7 +3,7 @@
 set -e
 
 # vars
-logfile=~/setup.log
+logfile=$basedir/setup.log
 
 #--------------------------------------
 # minikube

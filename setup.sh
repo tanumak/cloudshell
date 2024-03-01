@@ -1,7 +1,8 @@
 #!/bin/bash
 
 set -e
-cd $(dirname $0)
+basedir=$(dirname $(readlink -f $0))
+cd $basedir
 
 . functions
 
@@ -93,7 +94,7 @@ if ! kubectl_check_ns "gitea" || ! argocd_check_app "gitea"; then
   ng
   echo -n "gitea install ... "
   kubectl_wait "--for=condition=Ready pod -l app.kubernetes.io/name=argocd-repo-server" "argocd" || fail
-  argocd_create_app "gitea" "https://dl.gitea.com/charts/" "gitea" "10.1.2" "gitea" "--values-literal-file helm/gitea.yaml" || fail
+  argocd_create_app "gitea" "https://dl.gitea.com/charts/" "gitea" "10.1.2" "gitea" "--values-literal-file $basedir/helm/gitea.yaml" || fail
   ok
 else ok
 fi
@@ -104,7 +105,7 @@ if ! kubectl_check_ns "harbor" || ! argocd_check_app "harbor"; then
   ng
   echo -n "harbor install ... "
   kubectl_wait "--for=condition=Ready pod -l app.kubernetes.io/name=argocd-repo-server" "argocd" || fail
-  argocd_create_app "harbor" "https://helm.goharbor.io/" "harbor" "1.14.0" "harbor" "--values-literal-file helm/harbor.yaml" || fail
+  argocd_create_app "harbor" "https://helm.goharbor.io/" "harbor" "1.14.0" "harbor" "--values-literal-file $basedir/helm/harbor.yaml" || fail
   ok
 else ok
 fi
@@ -207,7 +208,7 @@ ok
 echo -n "check spring boot app workflow ... "
 if ! test -f "app/.gitea/workflows/app.yaml"; then
   exec_command "mkdir -p app/.gitea/workflows" || fail
-  exec_command "cp -p misc/java-app/java-app-workflow.yaml app/.gitea/workflows/java-app-workflow.yaml" || fail
+  exec_command "cp -p $basedir/misc/java-app/java-app-workflow.yaml app/.gitea/workflows/java-app-workflow.yaml" || fail
 fi
 ok
 exec_command "pushd app"
