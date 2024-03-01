@@ -7,7 +7,7 @@ jobs:
     permissions: write-all
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup java 17
         uses: actions/setup-java@v4
         with:
@@ -36,21 +36,27 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: registry.harbor.local:30021/library/java-app:${{ env.sha }}
-      - uses: actions/checkout@v4
+      - name: Checkout manifest repo
+        uses: actions/checkout@v4
         with:
           repository: gitea/app-manifest
           ref: main
           token: ${{ secrets.PAT }}
+          path: app-manifest
       - name: Update image tag
+        working-directory: app-manifest
         run: |
           git branch update_image_tag_${{ env.sha }}
           git checkout update_image_tag_${{ env.sha }}
-          sed -i -e '/image: registry.harbor.local:30021/ s/app:.*/app:${{ env.sha }}/' java-app-manifest.yaml
+          sed -i -e '/image: harbor.harbor.svc.cluster.local/ s/app:.*/app:${{ env.sha }}/' java-app-manifest.yaml
           git add java-app-manifest.yaml
           git -c user.email=gitea.actions@gitea.local -c user.name=gitea.actions commit -m "update image tag ${{ env.sha }}"
       - name: Login gitea
-        run: tea login | grep actions | grep -v grep || tea login add -i -u http://git.gitea.local:30011 -t ${{ secrets.PAT }} -n actions
-      - name: create pr
+        run: |
+          tea login | grep actions | grep -v grep && tea logout
+          tea login add -i -u http://git.gitea.local:30011 -t ${{ secrets.PAT }} -n actions
+      - name: Create pull request
+        working-directory: app-manifest
         run: |
           git push origin update_image_tag_${{ env.sha }}
           tea pr c --repo gitea/app-manifest --base main --head update_image_tag_${{ env.sha }} --title "update image tag ${{ env.sha }}"
