@@ -1,0 +1,267 @@
+#!/bin/bash
+
+set -e
+
+# vars
+logfile=~/setup.log
+
+#--------------------------------------
+# minikube
+minikube_status() {
+  cmd="minikube status"
+  exec_command "$cmd" || return $?
+}
+minikube_start() {
+  cmd="minikube start --cpus='no-limit' --memory='no-limit' --insecure-registry='192.168.0.0/16'"
+  exec_command "$cmd" || return $?
+}
+#--------------------------------------
+
+#--------------------------------------
+# kubectl
+kubectl_check_ns() {
+  cmd="kubectl get ns $1"
+  exec_command "$cmd" || return $?
+}
+kubectl_add_ns() {
+  cmd="kubectl create ns $1"
+  exec_command "$cmd" || return $?
+}
+kubectl_wait_exists() {
+  resource=$1
+  name=$2
+  timeout=$3
+  namespace=$4
+  if [ ! -z $namespace ]; then
+    namespace=" -n $namespace"
+  fi
+  cmd="kubectl get $resource $name$namespace"
+  for i in $(seq 1 $timeout); do
+    if exec_command "$cmd"
+    then
+      status=$?
+      break
+    else
+      status=$?
+      sleep 1
+      continue
+    fi
+  done
+  return $status
+}
+kubectl_wait() {
+  args=$1
+  namespace=$2
+  timeout=${3:-120s}
+  cmd="kubectl wait -n $namespace $args --timeout $timeout"
+  exec_command "$cmd" || return $?
+}
+kubectl_check_portforward() {
+  target=$1
+  port=$2
+  namespace=$3
+  if [ ! -z $namespace ]; then
+    namespace=" -n \"$namespace\""
+  fi
+  # close if pod not found
+  curl -s localhost:${port/:*/} -o /dev/null || true
+  cmd="ps -ef | grep \"port-forward $target$namespace $port\" | grep -v grep"
+  exec_command "$cmd" || return $?
+}
+kubectl_portforward() {
+  target=$1
+  port=$2
+  namespace=$3
+  if [ ! -z $namespace ]; then
+    namespace=" -n \"$namespace\""
+  fi
+  cmd="kubectl port-forward $target$namespace $port"
+  exec_background_command "$cmd"
+}
+
+#--------------------------------------
+# helm
+## repo
+helm_check_repo() {
+  repo=$1
+  cmd="helm repo list -o json | jq '[.[] | select (.name == \"$repo\")] | length'"
+  exec_command "$cmd" 1 || return $?
+}
+helm_add_repo() {
+  repo=$1
+  url=$2
+  cmd="helm repo add \"$repo\" \"$url\""
+  exec_command "$cmd" || return $?
+}
+## install
+helm_check_install() {
+  name=$1
+  namespace=$2
+  if [ ! -z $namespace ]; then
+    namespace=" -n \"$namespace\""
+  fi
+  cmd="helm list$namespace -o json | jq '[.[] | select (.name == \"$name\")] | length'"
+  exec_command "$cmd" 1 || return $?
+}
+helm_install() {
+  name=$1
+  chart=$2
+  namespace=$3
+  args=$4
+  if [ ! -z $namespace ]; then
+    namespace=" -n \"$namespace\""
+  fi
+  if [ ! -z "$args" ]; then
+    args=" $args"
+  fi
+  cmd="helm install$args $name $chart$namespace"
+  exec_command "$cmd" || return $?
+}
+  
+#--------------------------------------
+# argocd
+argocd_check_cli() {
+  cmd="which argocd"
+  exec_command "$cmd" || return $?
+}
+argocd_install_cli() {
+  cmd="curl -sSL -o /tmp/argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64; sudo install -m 555 /tmp/argocd-linux-amd64 /usr/local/bin/argocd; rm /tmp/argocd-linux-amd64"
+  exec_command "$cmd" || return $?
+}
+argocd_login() {
+  port=$1
+  password=$2
+  cmd="yes | argocd login localhost:$port --username admin --password $password"
+  exec_command "$cmd" || return $?
+}
+argocd_check_app() {
+  cmd="argocd app list -o json | jq '[.[] | select (.metadata.name == \"$1\")] | length'"
+  exec_command "$cmd" 1 || return $?
+}
+argocd_create_app() {
+#argocd app create gitea --repo https://dl.gitea.com/charts/ --helm-chart gitea --dest-server https://kubernetes.default.svc --dest-namespace gitea --revision 10.1.2 --sync-policy auto --sync-option CreateNamespace=true --values-literal-file gitea/values.yaml
+  name=$1
+  repo=$2
+  chart=$3
+  version=$4
+  namespace=$5
+  args=$6
+  if [ ! -z $namespace ]; then
+    namespace=" --dest-namespace $namespace"
+  fi
+  if [ ! -z "$args" ]; then
+    args=" $args"
+  fi
+  cmd="argocd app create $name --repo $repo --helm-chart $chart --dest-server https://kubernetes.default.svc$namespace --revision $version --sync-policy auto --sync-option CreateNamespace=true$args"
+  exec_command "$cmd" || return $?
+}
+
+#--------------------------------------
+# gitea
+gitea_check_repo() {
+  endpoint=$1
+  user=$2
+  pass=$3
+  repo=$4
+  cmd="curl -s -X GET -u \"$user:$pass\" http://$endpoint/api/v1/user/repos | jq '[ .[] | select (.name == \"$repo\")] | length'"
+  exec_command "$cmd" 1 || return $?
+}
+gitea_create_repo() {
+  endpoint=$1
+  user=$2
+  pass=$3
+  repo=$4
+  cmd="curl -v -s -X POST -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"name\": \"$repo\" }' http://$endpoint/api/v1/user/repos"
+  exec_command "$cmd" || return $?
+}
+gitea_check_repo_actions() {
+  endpoint=$1
+  user=$2
+  pass=$3
+  repo=$4
+  cmd="curl -s -X GET -u \"$user:$pass\" http://$endpoint/api/v1/repos/$user/$repo | jq '.has_actions'"
+  exec_command "$cmd" "true" || return $?
+}
+gitea_enable_repo_actions() {
+  endpoint=$1
+  user=$2
+  pass=$3
+  repo=$4
+  cmd="curl -v -s -X PATCH -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"has_actions\": true }' http://$endpoint/api/v1/repos/$user/$repo"
+  exec_command "$cmd" || return $?
+}
+gitea_set_secret() {
+  endpoint=$1
+  user=$2
+  pass=$3
+  key=$4
+  value=$5
+  cmd="curl -s -X PUT -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"data\": \"$value\" }' http://$endpoint/api/v1/user/actions/secrets/$key -w '%{http_code}'"
+  exec_command "$cmd" || return $?
+}
+
+#--------------------------------------
+# harbor
+harbor_login() {
+  url=$1
+  user=$2
+  pass=$3
+  cmd="docker login $url -u $user -p $pass"
+  exec_command "$cmd" || return $?
+}
+
+#--------------------------------------
+# command
+exec_command() {
+  status=0
+  expect_output=$2
+  command_log_start "$1"
+  if [ -z $expect_output ]; then
+    eval " $1" >>$logfile 2>&1 || status=$?
+  else
+    output=$(eval " $1" 2>&1)
+    echo $output >>$logfile
+    test "$output" == "$expect_output" || status=$?
+  fi
+  command_log_end "$1"
+  return $status
+}
+exec_background_command() {
+  out=${2:-/dev/null}
+  command_log_start "$1"
+  eval " $1" >>$out 2>&1 &
+  command_log_end "$1"
+}
+exec_command_out() {
+  command_log_start "$1"
+  output=$(eval " $1" 2>&1)
+  echo $output | tee -a $logfile
+  command_log_end "$1"
+}
+#--------------------------------------
+
+#--------------------------------------
+# logging
+command_log_start() {
+  echo "- COMMAND" >>$logfile
+  echo '```bash' >>$logfile
+  echo "$1" >>$logfile
+  echo '```' >>$logfile
+  echo '```terminal' >>$logfile
+}
+command_log_end() {
+  echo '```' >>$logfile
+  echo >>$logfile
+}
+#--------------------------------------
+
+ok() {
+  echo "ok"
+}
+ng() {
+  echo "ng"
+}
+fail() {
+  echo "fail"
+  exit 1
+}

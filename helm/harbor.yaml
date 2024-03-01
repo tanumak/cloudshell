@@ -1,0 +1,9 @@
+expose:
+  type: "nodePort"
+  tls:
+    enabled: false
+  nodePort:
+    ports:
+      http:
+        nodePort: 30021
+externalURL: "http://registry.harbor.local:30021"

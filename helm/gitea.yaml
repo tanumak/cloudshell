@@ -1,0 +1,16 @@
+gitea:
+  admin:
+    username: "gitea"
+    password: "Gitea12345"
+    email: "gitea@gitea.local"
+service:
+  http:
+    type: "NodePort"
+    nodePort: 30011
+  ssh:
+    type: "NodePort"
+    nodePort: 30012
+deployment:
+  env:
+    - name: GITEA__ACTIONS__ENABLED
+      value: 'true'

@@ -1,0 +1,63 @@
+name: java-app workflow
+on: [push]
+
+jobs:
+  build:
+    runs-on: localhost
+    permissions: write-all
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+      - name: Build fat jar
+        run: mvn --batch-mode --update-snapshots verify
+      - name: mkdir
+        run: mkdir target/extracted
+      - name: Extract jar
+        run: java -Djarmode=layertools -jar target/*.jar extract --destination target/extracted
+      - name: Set image tag vars
+        run: |
+          echo "sha=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
+      - name: Login to harbor
+        uses: docker/login-action@v1
+        with:
+          registry: registry.harbor.local:30021
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: registry.harbor.local:30021/library/java-app:${{ env.sha }}
+      - uses: actions/checkout@v4
+        with:
+          repository: gitea/app-manifest
+          ref: main
+          token: ${{ secrets.PAT }}
+      - name: Update image tag
+        run: |
+          git branch update_image_tag_${{ env.sha }}
+          git checkout update_image_tag_${{ env.sha }}
+          sed -i -e '/image: registry.harbor.local:30021/ s/app:.*/app:${{ env.sha }}/' java-app-manifest.yaml
+          git add java-app-manifest.yaml
+          git -c user.email=gitea.actions@gitea.local -c user.name=gitea.actions commit -m "update image tag ${{ env.sha }}"
+      - name: Login gitea
+        run: tea login | grep actions | grep -v grep || tea login add -i -u http://git.gitea.local:30011 -t ${{ secrets.PAT }} -n actions
+      - name: create pr
+        run: |
+          git push origin update_image_tag_${{ env.sha }}
+          tea pr c --repo gitea/app-manifest --base main --head update_image_tag_${{ env.sha }} --title "update image tag ${{ env.sha }}"
+#      - name: create pull request
+#        uses: peter-evans/create-pull-request@v3
+#        with:
+#          token: ${{ secrets.pat }}
+#          title: update app tag ${{ env.sha }}
+#          branch: update_tag_${{ env.sha }}
+#          commit-message: update app image ${{ env.sha }}
