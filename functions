@@ -213,8 +213,8 @@ gitea_create_access_token() {
   user=$2
   pass=$3
   name=$4
-  scope=$5
-  cmd="curl -s -X POST -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"name\": \"$name\", \"scope\": $scope }' http://$endpoint/api/v1/users/$user/tokens | jq -r .sha1"
+  scopes=$5
+  cmd="curl -s -X POST -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"name\": \"$name\", \"scopes\": $scopes }' http://$endpoint/api/v1/users/$user/tokens | jq -r .sha1"
   exec_command_out "$cmd"
 }
 gitea_check_cli() {
