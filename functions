@@ -3,7 +3,7 @@
 set -e
 
 # vars
-logfile=$basedir/setup.log
+logfile=$basedir/setup_log.md
 
 TZ=JST-9
 
@@ -87,7 +87,7 @@ kubectl_portforward() {
 helm_check_repo() {
   repo=$1
   cmd="helm repo list -o json | jq '[.[] | select (.name == \"$repo\")] | length'"
-  exec_command "$cmd" 1 || return $?
+  exec_command "$cmd" "^1$" || return $?
 }
 helm_add_repo() {
   repo=$1
@@ -103,7 +103,7 @@ helm_check_install() {
     namespace=" -n \"$namespace\""
   fi
   cmd="helm list$namespace -o json | jq '[.[] | select (.name == \"$name\")] | length'"
-  exec_command "$cmd" 1 || return $?
+  exec_command "$cmd" "^1$" || return $?
 }
 helm_install() {
   name=$1
@@ -138,7 +138,7 @@ argocd_login() {
 }
 argocd_check_app() {
   cmd="argocd app list -o json | jq '[.[] | select (.metadata.name == \"$1\")] | length'"
-  exec_command "$cmd" 1 || return $?
+  exec_command "$cmd" "^1$" || return $?
 }
 argocd_create_app() {
   name=$1
@@ -165,7 +165,7 @@ gitea_check_repo() {
   pass=$3
   repo=$4
   cmd="curl -s -X GET -u \"$user:$pass\" http://$endpoint/api/v1/user/repos | jq '[ .[] | select (.name == \"$repo\")] | length'"
-  exec_command "$cmd" 1 || return $?
+  exec_command "$cmd" "^1$" || return $?
 }
 gitea_create_repo() {
   endpoint=$1
@@ -181,7 +181,7 @@ gitea_check_repo_actions() {
   pass=$3
   repo=$4
   cmd="curl -s -X GET -u \"$user:$pass\" http://$endpoint/api/v1/repos/$user/$repo | jq '.has_actions'"
-  exec_command "$cmd" "true" || return $?
+  exec_command "$cmd" "^true$" || return $?
 }
 gitea_enable_repo_actions() {
   endpoint=$1
@@ -198,7 +198,7 @@ gitea_set_secret() {
   key=$4
   value=$5
   cmd="curl -s -X PUT -H 'Content-Type: application/json' -u \"$user:$pass\" -d '{ \"data\": \"$value\" }' http://$endpoint/api/v1/user/actions/secrets/$key -w '%{http_code}'"
-  exec_command "$cmd" || return $?
+  exec_command "$cmd" "^20.$" || return $?
 }
 gitea_check_access_token() {
   endpoint=$1
@@ -206,7 +206,7 @@ gitea_check_access_token() {
   pass=$3
   name=$4
   cmd="curl -s -X GET -u \"$user:$pass\" http://$endpoint/api/v1/users/$user/tokens | jq '[ .[] | select (.name == \"$name\")] | length'"
-  exec_command "$cmd" 1 || return $?
+  exec_command "$cmd" "^1$" || return $?
 }
 gitea_create_access_token() {
   endpoint=$1
@@ -273,14 +273,14 @@ google_cloudshell() {
 # command
 exec_command() {
   status=0
-  expect_output=$2
+  expect_regex=$2
   command_log_start "$1"
-  if [ -z $expect_output ]; then
+  if [ -z $expect_regex ]; then
     eval " $1" >>$logfile 2>&1 || status=$?
   else
     output=$(eval " $1" 2>&1)
     echo $output >>$logfile
-    test "$output" == "$expect_output" || status=$?
+    [[ "$output" =~ $expect_regex ]] || status=$?
   fi
   command_log_end "$1"
   return $status
