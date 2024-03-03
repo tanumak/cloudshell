@@ -116,7 +116,7 @@ if ! kubectl_check_ns "gitea" || ! argocd_check_app "gitea"; then
   ng
   echo -n "gitea install ... "
   kubectl_wait "--for=condition=Ready pod -l app.kubernetes.io/name=argocd-repo-server" "argocd" || fail
-  argocd_create_app "gitea" "https://dl.gitea.com/charts/" "gitea" "10.1.2" "gitea" "--values-literal-file $basedir/helm/gitea.yaml" || fail
+  argocd_create_helm_app "gitea" "https://dl.gitea.com/charts/" "gitea" "10.1.2" "gitea" "--values-literal-file $basedir/helm/gitea.yaml --self-heal --auto-prune" || fail
   ok
 else ok
 fi
@@ -127,7 +127,7 @@ if ! kubectl_check_ns "harbor" || ! argocd_check_app "harbor"; then
   ng
   echo -n "harbor install ... "
   kubectl_wait "--for=condition=Ready pod -l app.kubernetes.io/name=argocd-repo-server" "argocd" || fail
-  argocd_create_app "harbor" "https://helm.goharbor.io/" "harbor" "1.14.0" "harbor" "--values-literal-file $basedir/helm/harbor.yaml" || fail
+  argocd_create_helm_app "harbor" "https://helm.goharbor.io/" "harbor" "1.14.0" "harbor" "--values-literal-file $basedir/helm/harbor.yaml --self-heal --auto-prune" || fail
   ok
 else ok
 fi
@@ -199,8 +199,8 @@ gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "har
 gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "harbor_password" $harbor_pass || fail
 ok
 echo -n "set gitea user access token ... "
-if !  gitea_check_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "workflow"; then
-  gitea_token=$(gitea_create_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "workflow" '["write:issue","write:repository","write:user"]')
+if !  gitea_check_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat"; then
+  gitea_token=$(gitea_create_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat" '["write:issue","write:repository","write:user"]')
   gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat" "$gitea_token" || fail
 fi
 ok
@@ -242,12 +242,6 @@ if ! test -d "gs-spring-boot-docker/complete"; then
   exec_command "ln -s gs-spring-boot-docker/complete java-app" || fail
 fi
 ok
-echo -n "check spring boot app workflow ... "
-if ! test -f "java-app/.gitea/workflows/java-app-workflow.yaml"; then
-  exec_command "mkdir -p java-app/.gitea/workflows" || fail
-  exec_command "cp -p $basedir/misc/java-app/java-app-workflow.yaml java-app/.gitea/workflows/java-app-workflow.yaml" || fail
-fi
-ok
 echo -n "update spring boot app Dockerfile ... "
 exec_command "cp -p $basedir/misc/java-app/Dockerfile java-app/Dockerfile" || fail
 ok
@@ -259,6 +253,7 @@ if ! test -d ".git"; then
   exec_command "git add -A" || fail
   exec_command "git -c user.email=gitea@gitea.local -c user.name=gitea commit -m 'initial commit'" || fail
   exec_command "git remote add origin http://$gitea_user:$gitea_pass@$gitea_host:$gitea_nodeport_http/$gitea_user/java-app.git" || fail
+  exec_command "git push origin main" || fail
 fi
 ok
 exec_command "popd"
@@ -278,7 +273,38 @@ if ! test -d ".git"; then
 fi
 ok
 exec_command "popd"
+echo -n "check spring boot app workflow ... "
+if ! test -f "java-app/.gitea/workflows/java-app-workflow.yaml"; then
+  exec_command "mkdir -p java-app/.gitea/workflows" || fail
+  exec_command "cp -p $basedir/misc/java-app/java-app-workflow.yaml java-app/.gitea/workflows/java-app-workflow.yaml" || fail
+fi
+ok
 
+exec_command "pushd java-app"
+
+echo -n "build spring boot jar ... "
+exec_command "mvn --batch-mode --update-snapshots verify" || fail
+exec_command "mkdir -p target/extracted" || fail
+exec_command "java -Djarmode=layertools -jar target/*.jar extract --destination target/extracted" || fail
+ok
+
+echo -n "build spring boot container image ... "
+exec_command "docker build -t $harbor_host:$harbor_nodeport/library/java-app:latest ." || fail
+exec_command "docker image save -o /tmp/java-app.tar $harbor_host:$harbor_nodeport/library/java-app:latest" || fail
+exec_command "minikube image load /tmp/java-app.tar" || fail
+ok
+
+exec_command "popd"
+
+echo -n "check argocd java-app ... "
+if ! argocd_check_app "java-app"; then
+  ng
+  echo -n "create java-app ... "
+  kubectl_wait "--for=condition=Ready pod -l app.kubernetes.io/name=argocd-repo-server" "argocd" || fail
+  argocd_create_git_app "java-app" "http://gitea-http.gitea.svc.cluster.local:3000/$gitea_user/java-app-manifest.git" "." "default" "--self-heal --auto-prune" || fail
+  ok
+else ok
+fi
 
 ### URL
 if google_cloudshell; then

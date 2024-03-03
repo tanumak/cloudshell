@@ -19,6 +19,7 @@ spec:
       containers:
       - name: java-app
         image: registry.harbor.local:30021/library/java-app:latest
+        imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 8080
 ---

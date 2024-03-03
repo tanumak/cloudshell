@@ -140,7 +140,7 @@ argocd_check_app() {
   cmd="argocd app list -o json | jq '[.[] | select (.metadata.name == \"$1\")] | length'"
   exec_command "$cmd" "^1$" || return $?
 }
-argocd_create_app() {
+argocd_create_helm_app() {
   name=$1
   repo=$2
   chart=$3
@@ -149,11 +149,30 @@ argocd_create_app() {
   args=$6
   if [ ! -z $namespace ]; then
     namespace=" --dest-namespace $namespace"
+  else
+    namespace=" --dest-namespace default"
   fi
   if [ ! -z "$args" ]; then
     args=" $args"
   fi
   cmd="argocd app create $name --repo $repo --helm-chart $chart --dest-server https://kubernetes.default.svc$namespace --revision $version --sync-policy auto --sync-option CreateNamespace=true$args"
+  exec_command "$cmd" || return $?
+}
+argocd_create_git_app() {
+  name=$1
+  repo=$2
+  path=$3
+  namespace=$4
+  args=$5
+  if [ ! -z $namespace ]; then
+    namespace=" --dest-namespace $namespace"
+  else
+    namespace=" --dest-namespace default"
+  fi
+  if [ ! -z "$args" ]; then
+    args=" $args"
+  fi
+  cmd="argocd app create $name --repo $repo --path $path --dest-server https://kubernetes.default.svc$namespace --sync-policy auto$args"
   exec_command "$cmd" || return $?
 }
 

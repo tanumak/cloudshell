@@ -17,7 +17,7 @@ jobs:
       - name: Build fat jar
         run: mvn --batch-mode --update-snapshots verify
       - name: mkdir
-        run: mkdir target/extracted
+        run: mkdir -p target/extracted
       - name: Extract jar
         run: java -Djarmode=layertools -jar target/*.jar extract --destination target/extracted
       - name: Set image tag vars
