@@ -14,3 +14,11 @@ deployment:
   env:
     - name: GITEA__ACTIONS__ENABLED
       value: 'true'
+    - name: GITEA__SERVER__DOMAIN
+      value: 'gitea-http.gitea.svc.cluster.local'
+    - name: GITEA__SERVER__ROOT_URL
+      value: 'http://gitea-http.gitea.svc.cluster.local:3000'
+    - name: GITEA__SERVER__SSH_DOMAIN
+      value: 'gitea-ssh.gitea.svc.cluster.local'
+    - name: GITEA__WEBHOOK__ALLOWED_HOST_LIST
+      value: 'argocd-server.argocd.svc.cluster.local'
