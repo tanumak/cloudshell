@@ -176,7 +176,7 @@ harbor_login "http://$harbor_host:$harbor_nodeport/" "$harbor_user" "$harbor_pas
 ok
 
 # gitea setting
-for repo in app app-manifest; do
+for repo in java-app java-app-manifest; do
   echo -n "check gitea repo ($repo) ... "
   if ! gitea_check_repo "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass $repo; then
     ng
@@ -199,8 +199,8 @@ gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "har
 gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "harbor_password" $harbor_pass || fail
 ok
 echo -n "set gitea user access token ... "
-if !  gitea_check_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat"; then
-  gitea_token=$(gitea_create_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat" '["write:issue","write:repository","write:user"]')
+if !  gitea_check_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "workflow"; then
+  gitea_token=$(gitea_create_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "workflow" '["write:issue","write:repository","write:user"]')
   gitea_set_secret "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass "pat" "$gitea_token" || fail
 fi
 ok
@@ -239,41 +239,41 @@ if ! test -d "gs-spring-boot-docker/complete"; then
   echo -n "clone spring boot app ... "
   exec_command "git clone --depth 1 https://github.com/spring-guides/gs-spring-boot-docker.git" || fail
   exec_command "cp -p gs-spring-boot-docker/.gitignore gs-spring-boot-docker/complete" || fail
-  exec_command "ln -s gs-spring-boot-docker/complete app" || fail
+  exec_command "ln -s gs-spring-boot-docker/complete java-app" || fail
 fi
 ok
 echo -n "check spring boot app workflow ... "
-if ! test -f "app/.gitea/workflows/app.yaml"; then
-  exec_command "mkdir -p app/.gitea/workflows" || fail
-  exec_command "cp -p $basedir/misc/java-app/java-app-workflow.yaml app/.gitea/workflows/java-app-workflow.yaml" || fail
+if ! test -f "java-app/.gitea/workflows/java-app-workflow.yaml"; then
+  exec_command "mkdir -p java-app/.gitea/workflows" || fail
+  exec_command "cp -p $basedir/misc/java-app/java-app-workflow.yaml java-app/.gitea/workflows/java-app-workflow.yaml" || fail
 fi
 ok
 echo -n "update spring boot app Dockerfile ... "
-exec_command "cp -p $basedir/misc/java-app/Dockerfile app/Dockerfile" || fail
+exec_command "cp -p $basedir/misc/java-app/Dockerfile java-app/Dockerfile" || fail
 ok
-exec_command "pushd app"
+exec_command "pushd java-app"
 echo -n "check spring boot app git ... "
 if ! test -d ".git"; then
   exec_command "git init" || fail
   exec_command "git branch -m main" || fail
   exec_command "git add -A" || fail
   exec_command "git -c user.email=gitea@gitea.local -c user.name=gitea commit -m 'initial commit'" || fail
-  exec_command "git remote add origin http://$gitea_user:$gitea_pass@$gitea_host:$gitea_nodeport_http/$gitea_user/app.git" || fail
+  exec_command "git remote add origin http://$gitea_user:$gitea_pass@$gitea_host:$gitea_nodeport_http/$gitea_user/java-app.git" || fail
 fi
 ok
 exec_command "popd"
 echo -n "check spring boot app manifest git ... "
-if ! test -d "app-manifest"; then
-  exec_command "mkdir app-manifest" || fail
-  exec_command "cp -p $basedir/misc/java-app/java-app-manifest.yaml app-manifest/java-app-manifest.yaml" || fail
+if ! test -d "java-app-manifest"; then
+  exec_command "mkdir java-app-manifest" || fail
+  exec_command "cp -p $basedir/misc/java-app/java-app-manifest.yaml java-app-manifest/java-app-manifest.yaml" || fail
 fi
-exec_command "pushd app-manifest"
+exec_command "pushd java-app-manifest"
 if ! test -d ".git"; then
   exec_command "git init" || fail
   exec_command "git branch -m main" || fail
   exec_command "git add -A" || fail
   exec_command "git -c user.email=gitea@gitea.local -c user.name=gitea commit -m 'initial commit'" || fail
-  exec_command "git remote add origin http://$gitea_user:$gitea_pass@$gitea_host:$gitea_nodeport_http/$gitea_user/app-manifest.git" || fail
+  exec_command "git remote add origin http://$gitea_user:$gitea_pass@$gitea_host:$gitea_nodeport_http/$gitea_user/java-app-manifest.git" || fail
   exec_command "git push origin main" || fail
 fi
 ok
@@ -300,6 +300,32 @@ if google_cloudshell; then
   echo "--------------------------------------------------------------------------------"
   echo "Harbor WEB UI"
   echo "  https://$portforward_harbor-$WEB_HOST/"
+  echo "  Username: $harbor_user, Password: $harbor_pass"
+  echo
+  echo "Harbor CLI (docker command)"
+  echo "  http://$harbor_host:$harbor_nodeport"
+  echo "  Username: $harbor_user, Password: $harbor_pass"
+  echo "--------------------------------------------------------------------------------"
+else
+  echo
+  echo "--------------------------------------------------------------------------------"
+  echo "Argo CD WEB UI (browser)"
+  echo "  http://localhost:$portforward_argocd/"
+  echo "  Username: admin, Password: $argocd_pass"
+  echo "--------------------------------------------------------------------------------"
+  echo "Gitea WEB UI (browser)"
+  echo "  http://localhost:$portforward_gitea/"
+  echo "  http://$gitea_host:$gitea_nodeport_http/"
+  echo "  Username: $gitea_user, Password: $gitea_pass"
+  echo
+  echo "Gitea CLI (git command)"
+  echo "  http://$gitea_host:$gitea_nodeport_http"
+  echo "  ssh://$gitea_host:$gitea_nodeport_ssh"
+  echo "  Username: $gitea_user, Password: $gitea_pass"
+  echo "--------------------------------------------------------------------------------"
+  echo "Harbor WEB UI"
+  echo "  http://localhost:$portforward_harbor/"
+  echo "  http://$harbor_host:$harbor_nodeport"
   echo "  Username: $harbor_user, Password: $harbor_pass"
   echo
   echo "Harbor CLI (docker command)"

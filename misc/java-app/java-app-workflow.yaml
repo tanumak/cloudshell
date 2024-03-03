@@ -39,16 +39,16 @@ jobs:
       - name: Checkout manifest repo
         uses: actions/checkout@v4
         with:
-          repository: gitea/app-manifest
+          repository: gitea/java-app-manifest
           ref: main
           token: ${{ secrets.PAT }}
-          path: app-manifest
+          path: java-app-manifest
       - name: Update image tag
-        working-directory: app-manifest
+        working-directory: java-app-manifest
         run: |
           git branch update_image_tag_${{ env.sha }}
           git checkout update_image_tag_${{ env.sha }}
-          sed -i -e '/image: registry.harbor.local:30021/ s/app:.*/app:${{ env.sha }}/' java-app-manifest.yaml
+          sed -i -e '/image: registry.harbor.local:30021/ s/java-app:.*/java-app:${{ env.sha }}/' java-app-manifest.yaml
           git add java-app-manifest.yaml
           git -c user.email=gitea.actions@gitea.local -c user.name=gitea.actions commit -m "update image tag ${{ env.sha }}"
       - name: Login gitea
@@ -56,10 +56,10 @@ jobs:
           tea login | grep actions | grep -v grep && tea logout
           tea login add -i -u http://git.gitea.local:30011 -t ${{ secrets.PAT }} -n actions
       - name: Create pull request
-        working-directory: app-manifest
+        working-directory: java-app-manifest
         run: |
           git push origin update_image_tag_${{ env.sha }}
-          tea pr c --repo gitea/app-manifest --base main --head update_image_tag_${{ env.sha }} --title "update image tag ${{ env.sha }}"
+          tea pr c --repo gitea/java-app-manifest --base main --head update_image_tag_${{ env.sha }} --title "update image tag ${{ env.sha }}"
 #      - name: create pull request
 #        uses: peter-evans/create-pull-request@v3
 #        with:
