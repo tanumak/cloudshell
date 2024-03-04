@@ -5,7 +5,7 @@ set -e
 # vars
 logfile=$basedir/setup_log.md
 
-TZ=JST-9
+export TZ=JST-9
 
 #--------------------------------------
 # minikube
