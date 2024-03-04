@@ -17,6 +17,7 @@ done
 if [ ! -d gs-spring-boot-docker ]; then
   git clone --depth 1 https://github.com/spring-guides/gs-spring-boot-docker.git
   cp -p Dockerfile gs-spring-boot-docker/complete/Dockerfile
+  cp -p Application.java gs-spring-boot-docker/complete/src/main/java/hello/Application.java
 fi
 pushd gs-spring-boot-docker/complete
 mvn --batch-mode --update-snapshots verify

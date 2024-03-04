@@ -306,7 +306,7 @@ if ! test -d "gs-spring-boot-docker/complete"; then
 fi
 ok
 echo -n "update spring boot app Dockerfile ... "
-exec_command "cp -p $basedir/misc/java-app/Dockerfile java-app/Dockerfile" || fail
+exec_command "cp -p $basedir/misc/java/Dockerfile java-app/Dockerfile" || fail
 ok
 exec_command "pushd java-app"
 echo -n "check spring boot app git ... "
@@ -323,7 +323,7 @@ exec_command "popd"
 echo -n "check spring boot app manifest git ... "
 if ! test -d "java-app-manifest"; then
   exec_command "mkdir java-app-manifest" || fail
-  exec_command "cp -p $basedir/misc/java-app/java-app-manifest.yaml java-app-manifest/java-app-manifest.yaml" || fail
+  exec_command "cp -p $basedir/misc/java/java-app-manifest.yaml java-app-manifest/java-app-manifest.yaml" || fail
 fi
 exec_command "pushd java-app-manifest"
 if ! test -d ".git"; then
@@ -339,7 +339,10 @@ exec_command "popd"
 echo -n "check spring boot app workflow ... "
 if ! test -f "java-app/.gitea/workflows/java-app-workflow.yaml"; then
   exec_command "mkdir -p java-app/.gitea/workflows" || fail
-  exec_command "cp -p $basedir/misc/java-app/java-app-workflow.yaml java-app/.gitea/workflows/java-app-workflow.yaml" || fail
+  exec_command "cp -p $basedir/misc/java/java-app-workflow.yaml java-app/.gitea/workflows/java-app-workflow.yaml" || fail
+  ok 
+  echo -n "change message ... "
+  exec_command "cp -p $basedir/misc/java/Application.java java-app/src/main/java/hello/Application.java" || fail
 fi
 ok
 

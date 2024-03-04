@@ -38,3 +38,6 @@ rm -rf java-app-manifest
 # docker
 docker image ls | grep "$harbor_host:$harbor_nodeport/library/java-app:latest" && docker rmi $harbor_host:$harbor_nodeport/library/java-app:latest
 rm -f /tmp/java-app.tar
+
+# log
+rm -f setup_log.md
