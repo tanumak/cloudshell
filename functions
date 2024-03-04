@@ -123,8 +123,7 @@ helm_install() {
 #--------------------------------------
 # argocd
 argocd_check_cli() {
-  cmd="which argocd"
-  exec_command "$cmd" || return $?
+  check_cli "argocd" || return $?
 }
 argocd_install_cli() {
   cmd="curl -sSL -o /tmp/argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64; sudo install -m 555 /tmp/argocd-linux-amd64 /usr/local/bin/argocd; rm /tmp/argocd-linux-amd64"
@@ -237,8 +236,7 @@ gitea_create_access_token() {
   exec_command_out "$cmd"
 }
 gitea_check_cli() {
-  cmd="which tea"
-  exec_command "$cmd" || return $?
+  check_cli "tea" || return $?
 }
 gitea_install_cli() {
   cmd="curl -sSL -o /tmp/tea-0.9.2-linux-amd64 https://gitea.com/gitea/tea/releases/download/v0.9.2/tea-0.9.2-linux-amd64; sudo install -m 555 /tmp/tea-0.9.2-linux-amd64 /usr/local/bin/tea; rm /tmp/tea-0.9.2-linux-amd64"
@@ -259,33 +257,65 @@ harbor_login() {
 # hosts
 hosts_check() {
   host=$1
-  ip=$(minikube ip)
+  ip=$2
   cmd="grep $host /etc/hosts | grep $ip"
   exec_command "$cmd" || return $?
 }
 hosts_update() {
   host=$1
-  ip=$(minikube ip)
+  ip=$2
   cmd="echo $ip $host | sudo tee -a /etc/hosts"
   exec_command "$cmd" || return $?
 }
 hosts_check_minikube() {
   host=$1
-  ip=$(minikube ip)
+  ip=$2
   cmd="minikube ssh grep $host /etc/hosts | grep $ip"
   exec_command "$cmd" || return $?
 }
 hosts_update_minikube() {
   host=$1
-  ip=$(minikube ip)
+  ip=$2
   cmd="minikube ssh \"echo $ip $host | sudo tee -a /etc/hosts\""
   exec_command "$cmd" || return $?
+}
+
+#--------------------------------------
+# socat
+socat_check_cli() {
+  check_cli "socat" || return $?
+}
+socat_install_cli() {
+  exec_command "sudo apt install -y socat" || return $?
+}
+socat_check_portforward() {
+  listen=$1
+  ip=$2
+  port=$3
+  cmd="ps -ef | grep \"socat TCP-LISTEN:$listen,fork,reuseaddr TCP4:$ip:$port\" | grep -v grep"
+  exec_command "$cmd" || return $?
+}
+socat_portforward() {
+  listen=$1
+  ip=$2
+  port=$3
+  cmd="socat TCP-LISTEN:$listen,fork,reuseaddr TCP4:$ip:$port"
+  exec_background_command "$cmd"
 }
 
 #--------------------------------------
 # misc
 google_cloudshell() {
   test -d /google || return $?
+}
+check_cli() {
+  cmd="which $1"
+  exec_command "$cmd" || return $?
+}
+check_listening() {
+  port=$1
+  cmd="ss -o state listening sport = $port -np | grep $port"
+  exec_command "$cmd" || return $?
 }
 
 #--------------------------------------
