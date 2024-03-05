@@ -115,10 +115,10 @@ Gitea の画面右上の「サインイン」から`gitea`ユーザでログイ�
 ### Harbor
 
 以下の URL をクリックしてログインします。  
+Google の認証が出た場合は Cloud Shell と同じアカウントを選択します。  
 
 [https://8083-$WEB_HOST/](https://8083-$WEB_HOST/)
 
-Google の認証が出た場合は Cloud Shell と同じアカウントを選択します。  
 Harbor の画面から`admin`ユーザでログインします。  
 パスワードは `Harbor12345` です。
 
@@ -148,16 +148,34 @@ curl -s http://localhost:8080/
 
 <walkthrough-conclusion-trophy></walkthrough-conclusion-trophy>
 
-これでセットアップは完了です。
+これでセットアップは完了です。  
+続いて以下のチュートリアルで GitOps を体験してみましょう。
 
-### 他のチュートリアル
+---
 
-- xxx
+### GitOps チュートリアル (1)
+
+マニフェストを変更して Argo CD による反映を確認するチュートリアル
 ```bash
-teachme 2.md
+teachme ~/cloudshell/tutorial/gitops_1.md
 ```
 
-- xxx
+---
+
+### GitOps チュートリアル (2)
+
+ソースを変更して Gitea Actions による CI （ビルド、イメージプッシュ、マニフェストのプルリクエスト）を確認し、マニフェストの手動マージ（承認）で Argo CD による反映を確認するチュートリアル
+
 ```bash
-teachme 3.md
+teachme ~/cloudshell/tutorial/gitops_2.md
+```
+
+---
+
+### 各種情報表示
+
+URL や認証情報などまとめて表示
+
+```bash
+teachme ~/cloudshell/tutorial/info.md
 ```
