@@ -14,7 +14,7 @@ minikube_status() {
   exec_command "$cmd" || return $?
 }
 minikube_start() {
-  cmd="minikube start --cpus='no-limit' --memory='no-limit' --insecure-registry='192.168.0.0/16'"
+  cmd="minikube start --cpus='max' --memory='max' --insecure-registry='192.168.0.0/16'"
   exec_command "$cmd" || return $?
 }
 #--------------------------------------
