@@ -70,17 +70,13 @@ Google の認証が出た場合は Cloud Shell と同じアカウントを選択
 [https://8081-$WEB_HOST/](https://8081-$WEB_HOST/)
 
 Argo CD のログイン画面が表示されたら、`admin`ユーザでログインします。  
-パスワードはランダムで生成されますので、`setup.sh`の出力を確認してください。  
-パスワードは以下のコマンドでも確認可能です。
-```bash
-kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{$.data.password}' | base64 -d; echo
-```
+パスワードは `Argocd12345` です。
 
-![argocd login](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_login.png)
+[![argocd login](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_login.png)](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_login.png)
 
 ログイン後、`gitea`, `harbor`, `java-app` のアプリが表示されることを確認しましょう。
 
-![argocd login](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_app.png)
+[![argocd login](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_app.png)](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_app.png)
 
 
 ## 動作確認 (2) Gitea
@@ -99,11 +95,11 @@ Google の認証が出た場合は Cloud Shell と同じアカウントを選択
 Gitea の画面右上の「サインイン」から`gitea`ユーザでログインします。  
 パスワードは `Gitea12345` です。
 
-![gitea login](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_login.png)
+[![gitea login](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_login.png)](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_login.png)
 
 ログイン後、`java-app`, `java-app-manifest` のリポジトリが表示されることを確認しましょう。
 
-![gitea repo](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_repo.png)
+[![gitea repo](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_repo.png)](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_repo.png)
 
 
 ## 動作確認 (3) Harbor
@@ -122,8 +118,11 @@ Google の認証が出た場合は Cloud Shell と同じアカウントを選択
 Harbor の画面から`admin`ユーザでログインします。  
 パスワードは `Harbor12345` です。
 
-![harbor login](https://$LIGHTTPD_PORT-$WEB_HOST/harbor_login.png)
+[![harbor login](https://$LIGHTTPD_PORT-$WEB_HOST/harbor_login.png)](https://$LIGHTTPD_PORT-$WEB_HOST/harbor_login.png)
 
+ログイン後、`library/java-app:stable` のイメージが登録されていることを確認しましょう。
+
+[![harbor java-app](https://$LIGHTTPD_PORT-$WEB_HOST/harbor_java_app.png)](https://$LIGHTTPD_PORT-$WEB_HOST/harbor_java_app.png)
 
 ## 動作確認 (4) Spring Boot アプリ
 

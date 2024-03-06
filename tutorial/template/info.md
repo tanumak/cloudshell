@@ -7,9 +7,7 @@
 #### Argo CD
 - [https://8081-$WEB_HOST/](https://8081-$WEB_HOST/)
 - `admin`
-```bash
-kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{$.data.password}' | base64 -d; echo
-```
+- `Argocd12345`
 
 #### Gitea
 - [https://8082-$WEB_HOST/](https://8082-$WEB_HOST/)
@@ -26,9 +24,3 @@ kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{$.data.pa
 
 - [https://8080-$WEB_HOST/](https://8080-$WEB_HOST/)
 
-### コマンド
-
-- xxx
-```bash
-kubectl exec -it deploy/gitea -n gitea -- /bin/sh
-```

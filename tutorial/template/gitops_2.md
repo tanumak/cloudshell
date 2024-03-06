@@ -2,7 +2,7 @@
 
 ## はじめに
 
-このガイドでは Gitea Actions による CI と Argo CD によるマニフェスト反映を確認します。
+このガイドでは Gitea Actions による CI と Argo CD による CD を確認します。
 
 セットアップをしていない場合は以下を先に実施してください。
 ```bash
@@ -20,9 +20,11 @@ teachme ~/cloudshell/tutorial/setup.md
 
 セットアップで構築した環境は以下のようになっていて、Gitea Actions による CI、Argo CD による CD の GitOps を確認できるようになっています。
 
+[![gitops 2](https://$LIGHTTPD_PORT-$WEB_HOST/gitops_2.png)](https://$LIGHTTPD_PORT-$WEB_HOST/gitops_2.png)
+
 - **Spring Boot アプリコードリポジトリ**
-    - Gitea の [java-app リポジトリ](https://8082-$WEB_HOST/gitea/java-app/)に格納
-    - Gitea Actions のワークフローを作成して以下を実行する
+    - Gitea の [java-app リポジトリ](https://8082-$WEB_HOST/gitea/java-app/)
+    - Spring Boot のサンプルアプリと以下の処理をする [Gitea Actions のワークフロー](https://8082-$WEB_HOST/gitea/java-app/src/branch/main/.gitea/workflows/java-app-workflow.yaml)を格納
         - Spring Boot アプリのビルド
         - コンテナイメージのビルド
         - コンテナレジストリへの登録
@@ -30,7 +32,7 @@ teachme ~/cloudshell/tutorial/setup.md
         - マニフェストリポジトリへのプルリクエスト
 
 - **コンテナレジストリ**
-    - Harbor の library/java-app にイメージを格納
+    - Harbor の [library/java-app](https://8083-$WEB_HOST/harbor/projects/1/repositories/java-app/artifacts-tab) にイメージを格納
 
 - **Spring Boot アプリマニフェストリポジトリ**
     - Gitea の [java-app-manifest リポジトリ](https://8082-$WEB_HOST/gitea/java-app-manifest/)
@@ -52,26 +54,26 @@ teachme ~/cloudshell/tutorial/setup.md
 cd ~/cloudshell/java-app
 ```
 
-2. ワークフローを確認
-   ※ setup 実行時に配置されています
+2. ワークフローを確認（オプション）
 ```bash
 cat .gitea/workflows/java-app-workflow.yaml
 ```
-※ ほぼ GitHub と同じなのですが、プルリクエスト部分のみうまく動かなかったため、Gitea の CLI を使ってプルリクエストを発行しています
+※ ほぼ GitHub Actions と同じですが、プルリクエストのみうまく動かなかったため、Gitea の CLI を使ってプルリクエストを発行しています
 
-3. ワークフローファイルを追加
-```bash
-git add -A
-```
-
-4. コンテンツのメッセージの変更
+3. コンテンツのメッセージの変更  
+（Hello GitOps World → Gitea Actions World）
 ```bash
 sed -i -e 's/Hello GitOps/Gitea Actions/' src/main/java/hello/Application.java 
 ```
 
+4. 変更の確認
+```bash
+git diff
+```
+
 5. コミット
 ```bash
-git -c user.email=gitea -c user.name=gitea commit -am "workflow"
+git -c user.email=gitea -c user.name=gitea commit -am "change message"
 ```
 
 6. プッシュ
@@ -81,36 +83,64 @@ git push origin main
 
 7. Gitea の WEB UI で以下を確認
 - java-app リポジトリの [Actions](https://8082-$WEB_HOST/gitea/java-app/actions) からワークフローの実行結果（完了まで 2 分弱かかります）
+[![gitea actions](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_actions.png)](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_actions.png)
 - java-app-manifest の[ブランチ](https://8082-$WEB_HOST/gitea/java-app-manifest/branches)と[プルリクエスト](https://8082-$WEB_HOST/gitea/java-app-manifest/pulls)
 
-8. Harbor の WEB UI で [library/java-app](https://8083-$WEB_HOST/harbor/projects/1/repositories/java-app/artifacts-tab) にイメージが追加されていることを確認
+8. Harbor の WEB UI で [library/java-app](https://8083-$WEB_HOST/harbor/projects/1/repositories/java-app/artifacts-tab) にコミットハッシュ値のタグが追加されていることを確認
+[![harbor tag](https://$LIGHTTPD_PORT-$WEB_HOST/harbor_tag.png)](https://$LIGHTTPD_PORT-$WEB_HOST/harbor_tag.png)
 
-## マージによる反映
+CI が無事に完了していることを確認出来たら、次に進みましょう。
 
-マニフェストリポジトリのプルリクエストをマージすると、Argo CDに反映されます。  
+## Argo CD への Webhook
 
-5 分間隔の AUTOSYNC やマニュアルの SYNC でも反映できますが、ここではマニフェストリポジトリに Argo CD への Webhook を作成してリアルタイムに反映させます。
-
----
+マニフェストリポジトリのプルリクエストをマージして、Argo CD で SYNC されると環境に反映されます。  
+5 分間隔の AUTO SYNC や手動で SYNC することでも反映できますが、ここでは Gitea のマニフェストリポジトリに Argo CD への Webhook を作成してリアルタイムに反映させます。
 
 ### Webhook 設定
 
 java-app-manifest リポジトリの [Webhook の設定ページ](https://8082-$WEB_HOST/gitea/java-app-manifest/settings/hooks/gitea/new)を開きます。
 
-下記の通りに設定して Webhook を追加しましょう。
+下記の通りに設定して Webhook を追加しましょう。（以下以外はデフォルトのまま）
 
-**ターゲットURL**: http://argocd-server.argocd.svc.cluster.local/api/webhook  
-**ブランチフィルター**: main
+**ターゲットURL**:  
+`http://argocd-server.argocd.svc.cluster.local/api/webhook`
 
-さらに、追加された URL を再度選択して一番下のテスト配信を行って問題なく動くことを確認しましょう。
+**ブランチフィルター**: `main`
+[![gitea webhook](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_webhook.png)](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_webhook.png)
+
+「Webhook を追加」をクリックして追加されたら、追加された URL を再度選択して編集画面に入って一番下のテスト配信を行って問題なく動くことを確認しましょう。
+[![gitea webhook](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_webhook_2.png)](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_webhook_2.png)
+
+Webhook が正常に設定できたことを確認出来たら、次に進みましょう。
+
+## マージ 確認
+
+マージする前に Argo CD の [WEB UI](https://8081-$WEB_HOST/applications/argocd/java-app) を開いておきましょう。
+また、コマンドラインで以下を実行してコンテンツの切り替わりを確認できるようにしておきます。
+```bash
+while :; do curl -m 1 localhost:8080; sleep 0.2; done
+```
+
+準備ができたら[プルリクエスト](https://8082-$WEB_HOST/gitea/java-app-manifest/pulls) からマージコミットを作成しましょう。
+[![gitea merge](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_merge.png)](https://$LIGHTTPD_PORT-$WEB_HOST/gitea_merge.png)
+
+マージすると即時 Argo CD に反映されるのが確認できます。
+
+[![argocd rolling](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_rolling.png)](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_rolling.png)
+
+
+## Complete!
+
+<walkthrough-conclusion-trophy></walkthrough-conclusion-trophy>
+
+これで Gitea Actions と Argo CD による CI/CD の確認は終わりです。
 
 ---
 
-### マージ 確認
+### 各種情報表示
 
-Argo CD の WEB UI を開いた状態にしておき、マニフェストのプルリクエスト画面からマージリクエストを作成してみましょう。
+URL や認証情報などまとめて表示
 
-また、コマンドラインで以下を実行し、コンテンツが変わることを確認しましょう。
 ```bash
-while :; do curl -m 1 localhost:8080; sleep 0.2; done
+teachme ~/cloudshell/tutorial/info.md
 ```

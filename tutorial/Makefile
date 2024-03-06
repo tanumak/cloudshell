@@ -7,7 +7,12 @@ OUTPUT_DIR := .
 TEMPLATE_MD := $(wildcard $(TEMPLATE_DIR)/*.md)
 TUTORIAL_MD := $(patsubst $(TEMPLATE_DIR)/%.md, $(OUTPUT_DIR)/%.md, $(notdir $(TEMPLATE_MD)))
 
+ifndef WEB_HOST
+	WEB_HOST := $(shell grep WEB_HOST /etc/environment | awk -F= '{print $$2}')
+endif
+
 all: lighttpd $(TUTORIAL_MD)
+	@echo https://$(LIGHTTPD_PORT)-$(WEB_HOST)/
 
 lighttpd: lighttpd-install lighttpd-conf lighttpd-start
 

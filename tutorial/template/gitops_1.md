@@ -9,7 +9,7 @@
 teachme ~/cloudshell/tutorial/setup.md
 ```
 
-**所要時間**: 約 10 分
+**所要時間**: 約 15 分
 
 **前提条件**: なし
 
@@ -19,6 +19,8 @@ teachme ~/cloudshell/tutorial/setup.md
 ## 構成の確認
 
 セットアップで構築した環境は以下のようになっていて、簡単な GitOps を確認できるようになっています。
+
+[![gitops 1](https://$LIGHTTPD_PORT-$WEB_HOST/gitops_1.png)](https://$LIGHTTPD_PORT-$WEB_HOST/gitops_1.png)
 
 - **Spring Boot アプリマニフェストリポジトリ**
     - Gitea の [java-app-manifest リポジトリ](https://8082-$WEB_HOST/gitea/java-app-manifest/)
@@ -35,18 +37,32 @@ teachme ~/cloudshell/tutorial/setup.md
 Argo CD の WEB UI で [java-app](https://8081-$WEB_HOST/applications/argocd/java-app) を選択して詳細を確認します。  
 以下のような画面で Pod が 1 つだけ実行されていることがわかります。
 
-![java app](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app.png)
+[![java app](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app.png)](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app.png)
 
-また、上部の DETAIL ボタンから、以下がわかります。
-- Git のリポジトリ（java-app-manifest）
-- コンテナイメージ（java-app:latest）
-- SYNC POLICY
+また、上部の DETAILS ボタンから、以下がわかります。
+- Git のリポジトリ (REPO URL): java-app-manifest
+- コンテナイメージ (IMAGES): java-app:stable
+- 同期ポリシー (SYNC POLICY)
     - AUTOMATED  
       リポジトリの変更を自動的に適用する  
       ※ DISABLEボタンが表示されている場合、ENABLEになっている
     - SELF HEAL  
-      Pod や Service などが削除された場合に自動的に復旧する  
+      Deployment や Service などが削除された場合に自動的に復旧する  
       ※ DISABLEボタンが表示されている場合、ENABLEになっている）
+
+---
+
+### SELF HEAL の確認
+
+Deployment を削除して自動的に復旧するのをみてみましょう。
+```bash
+kubectl delete deploy/java-app
+```
+※ Argo CD の画面から Deployment の「…」から Delete することもできます
+
+削除されても、即時再作成されるのが確認できます。
+
+---
 
 次のステップでは実際にマニフェストを変更して Argo CD の動きを確認しましょう。
 
@@ -72,6 +88,7 @@ sed -i -e 's/replicas: .*/replicas: 3/' java-app-manifest.yaml
 ```bash
 git diff
 ```
+
 4. コミット
 ```bash
 git -c user.email=gitea -c user.name=gitea commit -am "replicas 3"
@@ -92,22 +109,47 @@ git push origin main
 
 マニフェストが変更されたため、Argo CD によって変更が検知され自動的に Pod が 3 つに増えます。（AUTO SYNC が有効のため）  
 
-ただし、デフォルトでは変更のポーリングが 5 分間隔であるため、すぐに反映させたい場合は Argo CD の上部の SYNC を実行します。
+ただし、デフォルトでは変更のポーリングが 5 分間隔であるため、すぐに反映させたい場合は Argo CD の上部の SYNC を実行します。  
+※ 「SYNC」>「SYNCHRONIZE」
 
 SYNC が実行されると画面上で Pod が増えたことが確認できます。  
 
-![argocd replicas 3](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_replicas3.png)
+[![argocd replicas 3](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_replicas3.png)](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_replicas3.png)
 
 なお、8080 番ポートを java-app の NodePort サービスに向けているので、以下を実行して複数の Pod が応答することを確認できます。
 ```bash
 for i in {1..10}; do curl -s localhost:8080; done
 ```
 
+## Argo CD のロールバック
+
+次はマニフェストの変更をロールバックしてみましょう。
+
+上部の「HISTORY AND ROLLBACK」をクリックして、一番下のデプロイを選択して「…」から「Rollback」をクリックしましょう。  
+AUTO SYNC を無効にするメッセージがでますので「OK」をクリックします。
+
+[![argocd rollback](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_rollback.png)](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_rollback.png)
+
+ロールバックが実行されると画面上で Pod 2 つが terminate されることが確認できます。  
+
+先程と同様に以下を実行して単一の Pod が応答することを確認できます。
+```bash
+for i in {1..10}; do curl -s localhost:8080; done
+```
+
+---
+
+### AUTO SYNC の有効化
+
+「DETAILS」をクリックして、中段にある「SYNC POLICY」の「ENABLE AYTO-SYNC」をクリックすることで AUTO SYNC が再度有効になります。
+
+[![argocd autosync](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_autosync.png)](https://$LIGHTTPD_PORT-$WEB_HOST/argocd_java_app_autosync.png)
+
 ## Complete!
 
 <walkthrough-conclusion-trophy></walkthrough-conclusion-trophy>
 
-これで Argo CD によるマニフェスト反映の確認は終わりです。  
+これで Argo CD の確認は終わりです。  
 続いて以下のチュートリアルで Gitea Actions を含めた CI/CD を体験してみましょう。
 
 ---
