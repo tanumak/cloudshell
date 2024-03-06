@@ -19,7 +19,7 @@ Cloud Shell は以下の 2 種類のスペックがあるようです。
 
 現在使用している環境がどちらかは以下で確認できます。
 ```bash
-~/cloudshell/showspec.sh
+~/cloudshell_open/cloudshell/showspec.sh
 ```
 
 2 CPU, 8 GB メモリの場合、GitOps のチュートリアルを進める際に多少時間がかかります。  
@@ -31,6 +31,7 @@ Cloud Shell は以下の 2 種類のスペックがあるようです。
 以下のコマンドでチュートリアルの資材を作成します。
 
 ```bash
+ln -s ~/cloudshell_open/cloudshell ~/cloudshell
 cd ~/cloudshell/tutorial
 ```
 ```bash
