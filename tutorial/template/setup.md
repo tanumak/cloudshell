@@ -35,9 +35,11 @@ cd ~/cloudshell
 
 コマンドを実行すると以下のような出力で始まります。
 ```terminal
-google cloudshell check ... ok
-minikube check ... ng
-minikube start ... 
+# docker
+ - check insecure registry ... ok
+# minikube
+ - minikube check ... ng
+ - minikube start ... 
 ```
 ※ `minikube start` で承認画面が出たら承認します
 

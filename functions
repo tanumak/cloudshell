@@ -348,7 +348,7 @@ exec_command_out() {
 #--------------------------------------
 # logging
 command_log_start() {
-  echo "- \`$(now)\` - COMMAND" >>$logfile
+  echo "\`$(now)\`" >>$logfile
   echo '```bash' >>$logfile
   echo "$1" >>$logfile
   echo '```' >>$logfile
@@ -358,15 +358,42 @@ command_log_end() {
   echo '```' >>$logfile
   echo >>$logfile
 }
-#--------------------------------------
-
+log_start() {
+  echo "# GitOps setup log" >$logfile
+  echo >>$logfile
+  echo "start at \`$(now)\`" >>$logfile
+  echo >>$logfile
+}
+log_end() {
+  echo "end at \`$(now)\`" >>$logfile
+  echo >>$logfile
+  echo "# GitOps setup complete" >>$logfile
+}
+log_section() {
+  echo "## $@" >>$logfile
+  echo >>$logfile
+}
+log_detail() {
+  echo "### $@" >>$logfile
+}
+h2() {
+  log_section $@
+  echo "# $@"
+}
+h3() {
+  log_detail $@
+  echo -n " - $@ ... "
+}
 ok() {
+  log_detail ok
   echo "ok"
 }
 ng() {
+  log_detail ng
   echo "ng"
 }
 fail() {
+  log_detail fail
   echo "fail"
   exit 1
 }
