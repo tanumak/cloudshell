@@ -316,6 +316,10 @@ exec_command "popd"
 
 exec_command "pushd java-app"
 
+echo -n "check java 17 ... "
+java_set_17 || fail
+ok
+
 echo -n "build spring boot jar ... "
 exec_command "mvn --batch-mode --update-snapshots verify" || fail
 exec_command "mkdir -p target/extracted" || fail

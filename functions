@@ -305,6 +305,16 @@ check_listening() {
   cmd="ss -o state listening sport = $port -np | grep $port"
   exec_command "$cmd" || return $?
 }
+java_set_17() {
+  # for cloudshell ephemeral
+  if [ "$JAVA_HOME" == "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
+    if [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+      export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+    else
+      return 1
+    fi
+  fi
+}
 
 #--------------------------------------
 # command
@@ -334,7 +344,6 @@ exec_command_out() {
   echo $output | tee -a $logfile
   command_log_end "$1"
 }
-#--------------------------------------
 
 #--------------------------------------
 # logging

@@ -13,6 +13,15 @@ for c in docker java mvn; do
   which $c || (echo "$c not found" && exit 1)
 done
 
+if [ "$JAVA_HOME" == "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
+  if [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+    export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+  else
+    echo "java 17 not found"
+    exit 1
+  fi
+fi
+
 # spring-boot app
 if [ ! -d gs-spring-boot-docker ]; then
   git clone --depth 1 https://github.com/spring-guides/gs-spring-boot-docker.git
