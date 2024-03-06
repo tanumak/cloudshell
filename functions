@@ -32,24 +32,12 @@ kubectl_add_ns() {
 kubectl_wait_exists() {
   resource=$1
   name=$2
-  timeout=$3
-  namespace=$4
+  namespace=$3
   if [ ! -z $namespace ]; then
     namespace=" -n $namespace"
   fi
   cmd="kubectl get $resource $name$namespace"
-  for i in $(seq 1 $timeout); do
-    if exec_command "$cmd"
-    then
-      status=$?
-      break
-    else
-      status=$?
-      sleep 1
-      continue
-    fi
-  done
-  return $status
+  exec_command "$cmd" || return $?
 }
 kubectl_wait() {
   args=$1
@@ -375,4 +363,19 @@ fail() {
 }
 now() {
   date "+%Y-%m-%d %H:%M:%S"
+}
+retry() {
+  max_tries="$1"; shift
+  command="$@"
+  attempt_num=1
+
+  until $command
+  do
+    if ((attempt_num==max_tries)); then
+      return 1
+    else
+      sleep $attempt_num
+      ((attempt_num++))
+    fi
+  done
 }

@@ -7,5 +7,5 @@ bash java-app-setup.sh
 
 ## run
 ```bash
-docker run --rm java-app:latest
+docker run --rm java-app:stable
 ```

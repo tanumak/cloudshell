@@ -11,6 +11,9 @@ portforward_argocd=8081
 portforward_gitea=8082
 portforward_harbor=8083
 
+argocd_pass=Argocd12345
+argocd_pass_hash='$2a$10$RSzTSyjIVZAERv639AI0GuVJ6zfrABF9n22/aEbfQuXxSj81QdS4u' # Argocd12345
+
 gitea_user=gitea
 gitea_pass=Gitea12345
 gitea_host=git.gitea.local
@@ -74,7 +77,7 @@ echo -n "argocd install check ... "
 if ! helm_check_install "argocd" "argocd"; then
   ng
   echo -n "argocd install ... "
-  helm_install "argocd" "argo/argo-cd" "argocd" "--set configs.params.\"server\.insecure\"=true" || fail
+  helm_install "argocd" "argo/argo-cd" "argocd" "--set configs.params.\"server\.insecure\"=true --set configs.secret.argocdServerAdminPassword='$argocd_pass_hash'" || fail
   ok
 else ok
 fi
@@ -122,8 +125,7 @@ if ! kubectl_check_portforward "svc/argocd-server" "$portforward_argocd:80" "arg
 else ok
 fi
 echo -n "login argocd ... "
-argocd_pass=$(exec_command_out "kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{$.data.password}' | base64 -d")
-argocd_login $portforward_argocd $argocd_pass || fail
+retry 3 argocd_login $portforward_argocd $argocd_pass || fail
 ok
 
 # gitea
@@ -167,8 +169,8 @@ if [ "$nodeport_forward_type" == "socat" ]; then
   fi
 else
   echo -n "gitea condition check ... "
-  kubectl_wait_exists "ns" "gitea" "5" || fail
-  kubectl_wait_exists "deploy" "gitea" "5" "gitea" || fail
+  retry 3 kubectl_wait_exists "ns" "gitea" || fail
+  retry 3 kubectl_wait_exists "deploy" "gitea" "gitea" || fail
   kubectl_wait "--for=condition=available deployment/gitea" "gitea" || fail
   ok
   echo -n "port-foward check for gitea ... "
@@ -195,8 +197,8 @@ if [ "$nodeport_forward_type" == "socat" ]; then
   fi
 else
   echo -n "harbor condition check ... "
-  kubectl_wait_exists "ns" "harbor" "5" || fail
-  kubectl_wait_exists "deploy" "harbor-core" "5" "harbor" || fail
+  retry 3 kubectl_wait_exists "ns" "harbor" || fail
+  retry 3 kubectl_wait_exists "deploy" "harbor-core" "harbor" || fail
   kubectl_wait "--for=condition=available deployment/harbor-core" "harbor" || fail
   kubectl_wait "--for=condition=ready pod -l component=nginx" "harbor" || fail
   ok
@@ -221,21 +223,21 @@ ok
 # harbor login
 if [ "$nodeport_forward_type" == "socat" ]; then
   echo -n "harbor condition check ... "
-  kubectl_wait_exists "ns" "harbor" "5" || fail
-  kubectl_wait_exists "deploy" "harbor-core" "5" "harbor" || fail
+  retry 3 kubectl_wait_exists "ns" "harbor" || fail
+  retry 3 kubectl_wait_exists "deploy" "harbor-core" "harbor" || fail
   kubectl_wait "--for=condition=available deployment/harbor-core" "harbor" || fail
   kubectl_wait "--for=condition=ready pod -l component=nginx" "harbor" || fail
   ok
 fi
 echo -n "login harbor ... "
-harbor_login "http://$harbor_host:$harbor_nodeport/" "$harbor_user" "$harbor_pass" || fail
+retry 3 harbor_login "http://$harbor_host:$harbor_nodeport/" "$harbor_user" "$harbor_pass" || fail
 ok
 
 # gitea setting
 if [ "$nodeport_forward_type" == "socat" ]; then
   echo -n "gitea condition check ... "
-  kubectl_wait_exists "ns" "gitea" "5" || fail
-  kubectl_wait_exists "deploy" "gitea" "5" "gitea" || fail
+  retry 3 kubectl_wait_exists "ns" "gitea" || fail
+  retry 3 kubectl_wait_exists "deploy" "gitea" "gitea" || fail
   kubectl_wait "--for=condition=available deployment/gitea" "gitea" || fail
   ok
 fi
@@ -245,14 +247,6 @@ for repo in java-app java-app-manifest; do
     ng
     echo -n "create gitea repo ($repo) ... "
     gitea_create_repo "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass $repo || fail
-    ok
-  else ok
-  fi
-  echo -n "check gitea actions ($repo) ... "
-  if ! gitea_check_repo_actions "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass $repo; then
-    ng
-    echo -n "enable gitea actions ($repo) ... "
-    gitea_enable_repo_actions "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass $repo || fail
     ok
   else ok
   fi
@@ -268,32 +262,6 @@ if !  gitea_check_access_token "$gitea_host:$gitea_nodeport_http" $gitea_user $g
 fi
 ok
 
-# act_runner
-echo -n "check local act runner ... "
-test -f "$act_runner_dir" && fail
-if ! test -f "$act_runner_dir/act_runner"; then
-  ng
-  test -d "$act_runner_dir" || mkdir "$act_runner_dir"
-  echo -n "install act runner ... "
-  curl -sLO "https://gitea.com/gitea/act_runner/releases/download/v0.2.6/act_runner-0.2.6-linux-amd64"
-  mv act_runner-0.2.6-linux-amd64 "$act_runner_dir/act_runner"
-  ok
-else ok
-fi
-chmod +x "$act_runner_dir/act_runner"
-echo -n "get gitea runner token ... "
-runner_token=$(exec_command_out "kubectl exec svc/gitea-http -n gitea -- gitea actions generate-runner-token -s gitea 2>/dev/null")
-ok
-echo -n "register act_runner ... "
-exec_command "$act_runner_dir/act_runner register --no-interactive --instance http://$gitea_host:$gitea_nodeport_http/ --token $runner_token --name localhost --labels localhost:host" || fail
-ok
-echo -n "check act_runner daemon ... "
-if exec_command "ps -ef | grep 'act_runner daemon' | grep -v grep"; then
-  exec_command "pkill act_runner" || fail
-fi
-exec_background_command "$act_runner_dir/act_runner daemon" "$act_runner_dir/localhost.log"
-ok
-
 # spring-boot app
 echo -n "check spring boot app ... "
 test -f "gs-spring-boot-docker" && fail
@@ -305,8 +273,17 @@ if ! test -d "gs-spring-boot-docker/complete"; then
   exec_command "ln -s gs-spring-boot-docker/complete java-app" || fail
 fi
 ok
-echo -n "update spring boot app Dockerfile ... "
-exec_command "cp -p $basedir/misc/java/Dockerfile java-app/Dockerfile" || fail
+echo -n "check spring boot app workflow ... "
+if ! test -f "java-app/.gitea/workflows/java-app-workflow.yaml"; then
+  exec_command "mkdir -p java-app/.gitea/workflows" || fail
+  exec_command "cp -p $basedir/misc/java/java-app-workflow.yaml java-app/.gitea/workflows/java-app-workflow.yaml" || fail
+  ok
+  echo -n "update spring boot app message ... "
+  exec_command "cp -p $basedir/misc/java/Application.java java-app/src/main/java/hello/Application.java" || fail
+  ok
+  echo -n "update spring boot app Dockerfile ... "
+  exec_command "cp -p $basedir/misc/java/Dockerfile java-app/Dockerfile" || fail
+fi
 ok
 exec_command "pushd java-app"
 echo -n "check spring boot app git ... "
@@ -336,15 +313,6 @@ if ! test -d ".git"; then
 fi
 ok
 exec_command "popd"
-echo -n "check spring boot app workflow ... "
-if ! test -f "java-app/.gitea/workflows/java-app-workflow.yaml"; then
-  exec_command "mkdir -p java-app/.gitea/workflows" || fail
-  exec_command "cp -p $basedir/misc/java/java-app-workflow.yaml java-app/.gitea/workflows/java-app-workflow.yaml" || fail
-  ok 
-  echo -n "change message ... "
-  exec_command "cp -p $basedir/misc/java/Application.java java-app/src/main/java/hello/Application.java" || fail
-fi
-ok
 
 exec_command "pushd java-app"
 
@@ -355,9 +323,8 @@ exec_command "java -Djarmode=layertools -jar target/*.jar extract --destination 
 ok
 
 echo -n "build spring boot container image ... "
-exec_command "docker build -t $harbor_host:$harbor_nodeport/library/java-app:latest ." || fail
-exec_command "docker image save -o /tmp/java-app.tar $harbor_host:$harbor_nodeport/library/java-app:latest" || fail
-exec_command "minikube image load /tmp/java-app.tar" || fail
+exec_command "docker build -t $harbor_host:$harbor_nodeport/library/java-app:stable ." || fail
+exec_command "docker push $harbor_host:$harbor_nodeport/library/java-app:stable" || fail
 ok
 
 exec_command "popd"
@@ -381,6 +348,44 @@ if ! socat_check_portforward "$portforward_java_app" "$minikube_ip" "$java_app_n
   ok
 else ok
 fi
+
+# act_runner
+echo -n "check local act runner ... "
+test -f "$act_runner_dir" && fail
+if ! test -f "$act_runner_dir/act_runner"; then
+  ng
+  test -d "$act_runner_dir" || mkdir "$act_runner_dir"
+  echo -n "install act runner ... "
+  curl -sLO "https://gitea.com/gitea/act_runner/releases/download/v0.2.6/act_runner-0.2.6-linux-amd64"
+  mv act_runner-0.2.6-linux-amd64 "$act_runner_dir/act_runner"
+  ok
+else ok
+fi
+chmod +x "$act_runner_dir/act_runner"
+echo -n "get gitea runner token ... "
+runner_token=$(exec_command_out "kubectl exec svc/gitea-http -n gitea -- gitea actions generate-runner-token -s gitea 2>/dev/null")
+ok
+echo -n "register act_runner ... "
+exec_command "$act_runner_dir/act_runner register --no-interactive --instance http://$gitea_host:$gitea_nodeport_http/ --token $runner_token --name localhost --labels localhost:host" || fail
+ok
+echo -n "check act_runner daemon ... "
+if exec_command "ps -ef | grep 'act_runner daemon' | grep -v grep"; then
+  exec_command "pkill act_runner" || fail
+fi
+exec_background_command "$act_runner_dir/act_runner daemon" "$act_runner_dir/localhost.log"
+ok
+
+# enable actions
+for repo in java-app java-app-manifest; do
+  echo -n "check gitea actions ($repo) ... "
+  if ! gitea_check_repo_actions "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass $repo; then
+    ng
+    echo -n "enable gitea actions ($repo) ... "
+    gitea_enable_repo_actions "$gitea_host:$gitea_nodeport_http" $gitea_user $gitea_pass $repo || fail
+    ok
+  else ok
+  fi
+done
 
 ### URL
 if google_cloudshell; then

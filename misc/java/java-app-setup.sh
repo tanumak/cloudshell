@@ -5,7 +5,7 @@ cd $(dirname $(readlink -f $0))
 
 if [ ! -z $1 ]; then
   rm -rf gs-spring-boot-docker
-  docker rmi java-app:latest
+  docker rmi java-app:stable
   exit 0
 fi
 
@@ -23,6 +23,6 @@ pushd gs-spring-boot-docker/complete
 mvn --batch-mode --update-snapshots verify
 mkdir -p target/extracted
 java -Djarmode=layertools -jar target/*.jar extract --destination target/extracted
-docker build -t java-app:latest .
+docker build -t java-app:stable .
 popd
 docker image ls java-app
